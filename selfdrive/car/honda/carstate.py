@@ -186,6 +186,12 @@ def get_can_signals(CP, gearbox_msg="GEARBOX"):
                 ("EPB_STATE", "EPB_STATUS", 0)]
     checks += [("EPB_STATUS", 50)]
 
+  if CP.carFingerprint in (CAR.ACCORD, CAR.ACCORDH):
+    signals += [("LEAD_DISTANCE", "RADAR_HUD", 0)]
+    checks += [("RADAR_HUD", 100)]
+  if CP.carFingerprint in (CAR.CRV_HYBRID, ):
+    signals += [("HUD_LEAD", "ACC_HUD", 0)]
+    
   # add gas interceptor reading if we are using it
   if CP.enableGasInterceptor:
     signals.append(("INTERCEPTOR_GAS", "GAS_SENSOR", 0))
@@ -212,6 +218,9 @@ class CarState(CarStateBase):
     self.cruise_setting = 0
     self.v_cruise_pcm_prev = 0
     self.cruise_mode = 0
+
+    self.lead_distance = 255
+    self.hud_lead = 0
 
   def update(self, cp, cp_cam, cp_body):
     ret = car.CarState.new_message()
@@ -359,11 +368,16 @@ class CarState(CarStateBase):
       self.stock_hud = cp_cam.vl["ACC_HUD"]
       self.stock_brake = cp_cam.vl["BRAKE_COMMAND"]
 
-    if self.CP.enableBsm and self.CP.carFingerprint in (CAR.CRV_5G, ):
+    if self.CP.enableBsm and self.CP.carFingerprint in (CAR.CRV_5G, CAR.CRV_HYBRID,):
       # BSM messages are on B-CAN, requires a panda forwarding B-CAN messages to CAN 0
       # more info here: https://github.com/commaai/openpilot/pull/1867
       ret.leftBlindspot = cp_body.vl["BSM_STATUS_LEFT"]["BSM_ALERT"] == 1
       ret.rightBlindspot = cp_body.vl["BSM_STATUS_RIGHT"]["BSM_ALERT"] == 1
+
+    if self.CP.carFingerprint in (CAR.ACCORD, CAR.ACCORDH):
+      self.lead_distance = cp.vl["RADAR_HUD"]['LEAD_DISTANCE']
+    if self.CP.carFingerprint in (CAR.CRV_HYBRID, ):
+      self.hud_lead = cp.vl["ACC_HUD"]['HUD_LEAD']
 
     return ret
 
@@ -399,7 +413,7 @@ class CarState(CarStateBase):
 
   @staticmethod
   def get_body_can_parser(CP):
-    if CP.enableBsm and CP.carFingerprint == CAR.CRV_5G:
+    if CP.enableBsm and CP.carFingerprint in (CAR.CRV_5G, CAR.CRV_HYBRID,):
       signals = [("BSM_ALERT", "BSM_STATUS_RIGHT", 0),
                  ("BSM_ALERT", "BSM_STATUS_LEFT", 0)]
 
