@@ -131,18 +131,19 @@ class CarInterface(CarInterfaceBase):
       ret.enableGasInterceptor = 0x201 in fingerprint[0]
       ret.openpilotLongitudinalControl = ret.enableCamera
 
-    if candidate == CAR.CRV_5G:
-      ret.enableBsm = 0x12f8bfa7 in fingerprint[0]
+    #if candidate in (CAR.CRV_5G, CAR.CRV_HYBRID,):
+    #  ret.enableBsm = 0x12f8bfa7 in fingerprint[0]
+    ret.enableBsm = True
 
     # Accord 1.5T CVT has different gearbox message
-    if candidate == CAR.ACCORD and 0x191 in fingerprint[0]:
+    if candidate == CAR.ACCORD and 0x191 in fingerprint[1]:
       ret.transmissionType = TransmissionType.cvt
 
     cloudlog.warning("ECU Camera Simulated: %r", ret.enableCamera)
     cloudlog.warning("ECU Gas Interceptor: %r", ret.enableGasInterceptor)
 
     ret.enableCruise = not ret.enableGasInterceptor
-    ret.communityFeature = ret.enableGasInterceptor
+    ret.communityFeature = False #ret.enableGasInterceptor
 
     # Certain Hondas have an extra steering sensor at the bottom of the steering rack,
     # which improves controls quality as it removes the steering column torsion from feedback.
@@ -152,10 +153,10 @@ class CarInterface(CarInterfaceBase):
     ret.lateralTuning.pid.kiBP, ret.lateralTuning.pid.kpBP = [[0.], [0.]]
     ret.lateralTuning.pid.kf = 0.00006  # conservative feed-forward
 
-    eps_modified = False
-    for fw in car_fw:
-      if fw.ecu == "eps" and b"," in fw.fwVersion:
-        eps_modified = True
+    eps_modified = True
+    # for fw in car_fw:
+    #   if fw.ecu == "eps" and b"," in fw.fwVersion:
+    #     eps_modified = True
 
     if candidate == CAR.CIVIC:
       stop_and_go = True
